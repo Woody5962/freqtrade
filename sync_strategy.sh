@@ -20,6 +20,3 @@ git commit -m "chore: update user_data submodule to -> $COMMIT_MSG"
 git push origin develop
 
 echo "✅ 同步完成！当前版本消息: $COMMIT_MSG"
-
-# 5. 远程更新 Oracle 上的仓库
-ssh oci "cd quant && sh update_bot.sh"
