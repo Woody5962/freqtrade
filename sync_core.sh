@@ -48,7 +48,3 @@ else
 fi
 
 echo "✨ 核心引擎更新流程结束。"
-
-# 7. 远程更新 Oracle 上的仓库
-ssh oci "cd quant && sh update_bot.sh"
-echo "✅ Oracle 上的仓库已更新！"
