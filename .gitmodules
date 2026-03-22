@@ -1,0 +1,3 @@
+[submodule "user_data"]
+	path = user_data
+	url = https://github.com/Woody5962/freqtrade_private_data.git
