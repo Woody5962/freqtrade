@@ -24,7 +24,12 @@ from sqlalchemy import select
 
 from freqtrade.__init__ import __version__
 from freqtrade.enums import CandleType, RunMode, State, TradingMode
-from freqtrade.exceptions import DependencyException, ExchangeError, OperationalException
+from freqtrade.exceptions import (
+    ConfigurationError,
+    DependencyException,
+    ExchangeError,
+    OperationalException,
+)
 from freqtrade.loggers import setup_logging, setup_logging_pre
 from freqtrade.optimize.backtesting import Backtesting
 from freqtrade.persistence import CustomDataWrapper, Trade
@@ -1471,6 +1476,44 @@ def test_api_historic_balance(botclient, mocker, ticker, fee, markets, is_short)
     assert "total_quote" in resp1["columns"]
 
 
+def test_api_historic_balance_int_bot_managed(botclient, mocker):
+    """
+    read_sql may return the wallet_history `bot_managed` column as an
+    integer (e.g. MySQL/MariaDB TINYINT)
+    """
+    _, client = botclient
+
+    # Single row: with an int64 `bot_managed`
+    one_row = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2024-01-01"]),
+            "total_quote": [100.0],
+            "bot_managed": [1],
+        }
+    ).astype({"bot_managed": "int64"})
+    mocker.patch("freqtrade.rpc.rpc.read_sql", return_value=one_row)
+    rc = client_get(client, f"{BASE_URI}/historic_balance")
+    assert_response(rc, 200)
+    assert rc.json()["length"] == 1
+    assert rc.json()["data"][0][0] == "2024-01-01T00:00:00"
+    assert rc.json()["data"][0][2] == 100.0
+
+    # Mixed rows: the non-bot-managed row (bot_managed=0) must be excluded.
+    two_rows = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2024-01-01", "2024-01-02"]),
+            "total_quote": [100.0, 200.0],
+            "bot_managed": [0, 1],
+        }
+    ).astype({"bot_managed": "int64"})
+    mocker.patch("freqtrade.rpc.rpc.read_sql", return_value=two_rows)
+    rc = client_get(client, f"{BASE_URI}/historic_balance")
+    assert_response(rc, 200)
+    assert rc.json()["length"] == 1
+    assert rc.json()["data"][0][0] == "2024-01-02T00:00:00"
+    assert rc.json()["data"][0][2] == 200.0
+
+
 def test_api_performance(botclient, fee):
     ftbot, client = botclient
     patch_get_signal(ftbot)
@@ -2751,10 +2794,10 @@ def test_api_exchanges(botclient):
         "alias_for": None,
         "trade_modes": [{"trading_mode": "spot", "margin_mode": ""}],
     }
-    waves = next(x for x in response["exchanges"] if x["classname"] == "wavesexchange")
+    waves = next(x for x in response["exchanges"] if x["classname"] == "aster")
     assert waves == {
-        "classname": "wavesexchange",
-        "name": "Waves.Exchange",
+        "classname": "aster",
+        "name": "Aster",
         "valid": True,
         "supported": False,
         "dex": True,
@@ -3127,6 +3170,14 @@ def test_api_backtesting(botclient, mocker, fee, caplog, tmp_path):
 
         mocker.patch(
             "freqtrade.optimize.backtesting.Backtesting.backtest_one_strategy",
+            side_effect=ConfigurationError("DeadBeef22"),
+        )
+        rc = client_post(client, f"{BASE_URI}/backtest", data=data)
+        assert log_has("Backtesting encountered a configuration Error: DeadBeef22", caplog)
+
+        data["stake_amount"] = 102
+        mocker.patch(
+            "freqtrade.optimize.backtesting.Backtesting.backtest_one_strategy",
             side_effect=DependencyException("DeadBeef"),
         )
         rc = client_post(client, f"{BASE_URI}/backtest", data=data)
@@ -3463,6 +3514,18 @@ def test_api_ws_requests(botclient, caplog):
     assert response["type"] == "analyzed_df"
 
 
+def test_channel_reader_handles_freqtrade_exception(botclient):
+    _ftbot, client = botclient
+    ws_url = f"/api/v1/message/ws?token={_TEST_WS_TOKEN}"
+
+    # Test with wrong request -> wrong_type is not a valid type
+    with client.websocket_connect(ws_url) as ws:
+        ws.send_json({"type": "wrong_type", "data": ["test"]})
+        response = ws.receive_json()
+
+        assert response["data"] == "Invalid request type: wrong_type"
+
+
 def test_api_ws_send_msg(default_conf, mocker, caplog):
     try:
         caplog.set_level(logging.DEBUG)
@@ -3588,6 +3651,7 @@ def test_api_markets_live(botclient):
         "symbol": "XRP/USDT",
         "spot": True,
         "swap": False,
+        "active": True,
     }
 
     assert "BTC/USDT" in response["markets"]

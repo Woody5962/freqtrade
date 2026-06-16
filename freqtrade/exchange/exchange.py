@@ -13,12 +13,13 @@ from datetime import UTC, datetime, timedelta
 from math import floor, isnan
 from threading import Lock
 from typing import Any, Literal, TypeGuard, TypeVar
+from uuid import uuid4
 
 import ccxt
 import ccxt.pro as ccxt_pro
 from ccxt import TICK_SIZE
 from dateutil import parser
-from pandas import DataFrame, concat
+from pandas import DataFrame, Timestamp, concat
 
 from freqtrade.configuration import remove_exchange_credentials
 from freqtrade.constants import (
@@ -1152,7 +1153,7 @@ class Exchange:
         stop_price: float | None = None,
     ) -> CcxtOrder:
         now = dt_now()
-        order_id = f"dry_run_{side}_{pair}_{now.timestamp()}"
+        order_id = f"dry_run_{side}_{pair}_{uuid4()}"
         # Rounding here must respect to contract sizes
         _amount = self._contracts_to_amount(
             pair, self.amount_to_precision(pair, self._amount_to_contracts(pair, amount))
@@ -2669,11 +2670,11 @@ class Exchange:
         if self._can_use_websocket(self._exchange_ws, pair, timeframe, candle_type):
             candle_ts = dt_ts(timeframe_to_prev_date(timeframe))
             prev_candle_ts = dt_ts(date_minus_candles(timeframe, 1))
-            candles = self._exchange_ws.ohlcvs(pair, timeframe)
-            half_candle = int(candle_ts - (candle_ts - prev_candle_ts) * 0.5)
-            last_refresh_time = int(
-                self._exchange_ws.klines_last_refresh.get((pair, timeframe, candle_type), 0)
+            candles, last_refresh_time = self._exchange_ws.get_ohlcv_with_refresh(
+                pair, timeframe, candle_type
             )
+            last_refresh_time = int(last_refresh_time)
+            half_candle = int(candle_ts - (candle_ts - prev_candle_ts) * 0.5)
 
             if (
                 candles
@@ -3962,7 +3963,14 @@ class Exchange:
         fees: float = 0
 
         if not df.empty:
-            df1 = df[(df["date"] >= open_date) & (df["date"] <= close_date)]
+            dates = df["date"]
+            unit = dates.dtype.unit
+            # Timestamps must be converted to column unit for dry/live mode
+            # where open/close dates can have microsecond precision - but the column may not have
+            # that precision.
+            lo = Timestamp(open_date).ceil(unit).as_unit(unit)
+            hi = Timestamp(close_date).floor(unit).as_unit(unit)
+            df1 = df.iloc[dates.searchsorted(lo, "left") : dates.searchsorted(hi, "right")]
             fees = sum(df1["open_fund"] * df1["open_mark"] * amount)
         if isnan(fees):
             fees = 0.0
