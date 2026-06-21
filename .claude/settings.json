@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"from datasieve.transforms import SKLearnWrapper; print\\('SKLearnWrapper ok'\\)\")",
+      "Bash(python -c \"from datasieve.pipeline import Pipeline; p=Pipeline\\(\\); print\\('features_in' in dir\\(p\\), 'feature_list' in dir\\(p\\)\\)\")",
+      "Bash(grep -nE \"features_in|feature_list\" /Users/woody/anaconda3/envs/freqtrade/lib/python3.12/site-packages/datasieve/pipeline.py | head -20)",
+      "Read(//Users/woody/anaconda3/envs/freqtrade/lib/python3.12/site-packages/datasieve/**)",
+      "Bash(pip show *)",
+      "Bash(git fetch *)",
+      "Bash(git merge *)",
+      "Bash(git log *)",
+      "Bash(python -c ' *)",
+      "Bash(python -c \"from datasieve.transforms import SKLearnWrapper; print\\('0.0.9 SKLearnWrapper ok'\\)\")",
+      "Bash(freqtrade list-freqaimodels *)",
+      "Bash(awk 'NR>=45' /private/tmp/claude-501/-Users-woody-work-freqtrade/c169e636-5d4c-443a-9cec-f3373abefb1d/tasks/bf3ci2qik.output)",
+      "Bash(awk 'NR>=600 && NR<=620' /Users/woody/work/freqtrade/freqtrade/freqai/freqai_interface.py)",
+      "Bash(awk 'NR>=620 && NR<=640' /Users/woody/work/freqtrade/freqtrade/freqai/freqai_interface.py)"
+    ]
+  }
+}

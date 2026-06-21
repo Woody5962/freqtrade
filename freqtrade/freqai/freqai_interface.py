@@ -12,10 +12,18 @@ import numpy as np
 import pandas as pd
 import psutil
 from datasieve.pipeline import Pipeline
-from datasieve.transforms import SKLearnWrapper
 from numpy.typing import NDArray
 from pandas import DataFrame
 from sklearn.preprocessing import MinMaxScaler
+
+# datasieve >= 0.1.0 renamed/removed several transforms (SKLearnWrapper,
+# PCAFeatures, etc.) that the default define_data_pipeline() references.
+# Tolerate the missing import so users can plug in their own freqaimodel
+# subclass that overrides define_data_pipeline with a pure-sklearn pipeline.
+try:
+    from datasieve.transforms import SKLearnWrapper  # noqa: F401
+except ImportError:
+    SKLearnWrapper = None  # type: ignore[assignment]
 
 from freqtrade.configuration import TimeRange
 from freqtrade.constants import DOCS_LINK, Config
