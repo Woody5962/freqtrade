@@ -14,7 +14,15 @@
       "Bash(freqtrade list-freqaimodels *)",
       "Bash(awk 'NR>=45' /private/tmp/claude-501/-Users-woody-work-freqtrade/c169e636-5d4c-443a-9cec-f3373abefb1d/tasks/bf3ci2qik.output)",
       "Bash(awk 'NR>=600 && NR<=620' /Users/woody/work/freqtrade/freqtrade/freqai/freqai_interface.py)",
-      "Bash(awk 'NR>=620 && NR<=640' /Users/woody/work/freqtrade/freqtrade/freqai/freqai_interface.py)"
+      "Bash(awk 'NR>=620 && NR<=640' /Users/woody/work/freqtrade/freqtrade/freqai/freqai_interface.py)",
+      "Skill(deep-research)",
+      "Skill(deep-research:*)",
+      "WebSearch",
+      "Bash(git -C /Users/woody/work/freqtrade check-ignore -v user_data/docs/freqai-architecture-2026.md)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git reset *)",
+      "Bash(git restore *)"
     ]
   }
 }
