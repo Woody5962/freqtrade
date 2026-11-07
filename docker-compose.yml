@@ -1,7 +1,12 @@
 ---
 services:
   freqtrade:
-    image: freqtradeorg/freqtrade:stable
+    # 部署用镜像：把容器内 ftuser 的 uid 映射为 1001，与宿主机 ubuntu 对齐，
+    # 避免 freqtrade 启动时 sudo chown 把 user_data 改成 opc:opc。
+    image: freqtrade:local
+    build:
+      context: .
+      dockerfile: "./docker/Dockerfile.local-uid"
     # image: freqtradeorg/freqtrade:develop
     # Use plotting image
     # image: freqtradeorg/freqtrade:develop_plot
