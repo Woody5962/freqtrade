@@ -32,5 +32,6 @@ services:
       trade
       --logfile /freqtrade/user_data/logs/freqtrade.log
       --db-url sqlite:////freqtrade/user_data/tradesv3.sqlite
-      --config /freqtrade/user_data/config.json
-      --strategy SampleStrategy
+      --config /freqtrade/user_data/configs/TurtleStrategyOptV8/config_v8_dry.json
+      --config /freqtrade/user_data/secrets/config_private.json
+      --strategy TurtleStrategyOptV8
