@@ -1,0 +1,16 @@
+FROM freqtradeorg/freqtrade:stable
+
+# 官方镜像内 freqtrade 以 ftuser(uid 1000) 运行，启动时 create_userdata_dir 会执行
+#   sudo chown -R ftuser: <user_data>
+# 宿主机上 uid 1000 是 opc，于是挂载目录里的文件全被改成 opc:opc，宿主机登录用户
+# ubuntu(uid 1001) 无法直接写入，必须 sudo chown —— 这就是属主反复漂移的根源。
+#
+# 解决：把镜像内 ftuser 的 uid/gid 改成 1001，与宿主机 ubuntu 对齐。
+# 之后容器 chown 的目标就是 1001:1001，宿主机无需任何 sudo chown。
+# 基础镜像设置了 USER ftuser，构建时必须先切到 root；usermod 会因 PID 1 占用报错，
+# 因此直接改 /etc/passwd 与 /etc/group。
+USER root
+RUN sed -i "s/^ftuser:x:1000:1000:/ftuser:x:1001:1001:/" /etc/passwd \
+ && sed -i "s/^ftuser:x:1000:/ftuser:x:1001:/" /etc/group \
+ && chown -R 1001:1001 /home/ftuser
+USER ftuser
