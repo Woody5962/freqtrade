@@ -160,3 +160,18 @@ def test_neither_atr_path_becomes_silently_missing():
             f"one path is missing while the other is not at {when}: "
             f"backtest={backtest} live={live}"
         )
+
+
+def test_stale_minute_logged_with_age_once(caplog):
+    pair = "TEST/USDT"
+    minutes, base = _synthetic_pair(pair)
+    strategy = _strategy_for(minutes, base, pair)
+    now = minutes["date"].iloc[-1] + pd.Timedelta(minutes=5)
+    with caplog.at_level("INFO"):
+        for _ in range(2):
+            assert strategy._latest_updated_4h_atr(pair, now) is None
+    messages = [
+        record.message for record in caplog.records if "reason=stale_minute" in record.message
+    ]
+    assert len(messages) == 1
+    assert "age_seconds=240.0" in messages[0]

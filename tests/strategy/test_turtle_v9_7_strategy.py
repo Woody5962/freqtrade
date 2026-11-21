@@ -169,3 +169,36 @@ def test_no_pyramid_without_fresh_atr():
     strategy = _with_wallet(_strategy())
     strategy._latest_updated_4h_atr = Mock(return_value=None)
     assert _pyramid_call(strategy, _trade(), 100.0, 0.10) is None
+
+
+def test_signal_diagnostic_matches_entry_and_deduplicates(caplog):
+    import pandas as pd
+    from freqtrade.enums import RunMode
+
+    strategy = _strategy()
+    strategy.dp.runmode = RunMode.DRY_RUN
+    dates = pd.to_datetime(["2026-01-01T00:00Z", "2026-01-01T04:00Z"])
+    frame = pd.DataFrame(
+        {
+            "date_4h": dates,
+            "close_4h": [90, 105],
+            "dc_upper_20_4h": [100, 100],
+            "ema_fast_19_4h": [98, 99],
+            "ema_slow_37_4h": [92, 94],
+            "adx_21_4h": [30, 31],
+            "regime_ema_200_4h": [95, 95],
+            "volume": [1, 1],
+        }
+    )
+    metadata = {"pair": "BTC/USDT"}
+    with caplog.at_level("INFO"):
+        strategy.populate_entry_trend(frame.iloc[:1].copy(), metadata)
+        for _ in range(2):
+            result = strategy.populate_entry_trend(frame.copy(), metadata)
+        strategy.dp.runmode = RunMode.BACKTEST
+        strategy.populate_entry_trend(frame.copy(), {"pair": "ETH/USDT"})
+    assert result["enter_long"].tolist() == [0, 1]
+    messages = [rec.message for rec in caplog.records if "event=entry_gate" in rec.message]
+    assert len(messages) == 2
+    assert "reason=blocked" in messages[0] and "breakout=False" in messages[0]
+    assert "reason=pass" in messages[1] and "regime_ema_ok=True" in messages[1]
